@@ -24,6 +24,7 @@ public class GUI implements ActionListener {
     private final JLabel l2 = new JLabel("Steps: ");
     private final JLabel l3 = new JLabel("Steps: ");
     private final JLabel l4 = new JLabel("Steps: ");
+    private final JLabel averageLabel = new JLabel();
     private final JPanel hp1 = new JPanel();
     private final JPanel hp2 = new JPanel();
     private final JPanel hp3 = new JPanel();
@@ -121,6 +122,7 @@ public class GUI implements ActionListener {
         hp3.setLayout(new GridLayout(7, 7, BORDER, BORDER));
         hp4.setLayout(new GridLayout(7, 7, BORDER, BORDER));
 
+        history.add(averageLabel);
 
         for (int cc = 0; cc < 7; cc++) {
             for (int rr = 0; rr < 7; rr++) {
@@ -140,6 +142,7 @@ public class GUI implements ActionListener {
                 hp4.add(grid4[rr][cc]);
             }
         }
+
 
         GridBagConstraints gbc = new GridBagConstraints(); // GUI location elements
         gbc.fill = GridBagConstraints.BOTH;
@@ -169,6 +172,9 @@ public class GUI implements ActionListener {
         gbc.gridx = 3;
         gbc.gridy = 1;
         history.add(l4, gbc);
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        history.add(averageLabel,gbc);
         gbc.gridx = 3;
         gbc.gridy = 2;
         gbc.weighty = 0.5;
@@ -185,6 +191,9 @@ public class GUI implements ActionListener {
         boolean gb2 = true;
         boolean gb3 = true;
 
+        int total = 0;
+        int divider = 0;
+
         if (g[0] == null) gb0 = false; // Flags to prevent crashes when historic grids do not exist
         if (g[1] == null) gb1 = false;
         if (g[2] == null) gb2 = false;
@@ -194,6 +203,8 @@ public class GUI implements ActionListener {
             l1.setText("Used Solver");
         } else if (gb0) {
             l1.setText("Steps: " + g[0].getSteps()); // Display steps
+            total = total + g[0].getSteps();
+            divider++;
         } else {
             l1.setText("Empty"); // Displays empty if no history
         }
@@ -202,6 +213,8 @@ public class GUI implements ActionListener {
             l2.setText("Used Solver");
         } else if (gb1) {
             l2.setText("Steps: " + g[1].getSteps());
+            total = total + g[1].getSteps();
+            divider++;
         } else {
             l2.setText("Empty");
         }
@@ -210,6 +223,8 @@ public class GUI implements ActionListener {
             l3.setText("Used Solver");
         } else if (gb2) {
             l3.setText("Steps: " + g[2].getSteps());
+            total = total + g[2].getSteps();
+            divider++;
         } else {
             l3.setText("Empty");
         }
@@ -218,9 +233,13 @@ public class GUI implements ActionListener {
             l4.setText("Used Solver");
         } else if (gb3) {
             l4.setText("Steps: " + g[3].getSteps());
+            total = total + g[3].getSteps();
+            divider++;
         } else {
             l4.setText("Empty");
         }
+
+        averageLabel.setText("Average: " + total/divider);
 
         for (int cc = 1; cc < 6; cc++) {
             for (int rr = 0; rr < 7; rr++) {
@@ -270,7 +289,7 @@ public class GUI implements ActionListener {
             removeButtonSettings(); // Reset button settings
             inputGrid(); // Input the user input into a grid to solve
             Solver solve = new Solver(gridToSolve); // Initialize solver
-            if (solve.dfs()) { // Check if grid can be solved
+            if (solve.bfs()) { // Check if grid can be solved
                 solve.showSolution(); // Show solution
                 JOptionPane.showMessageDialog(buttonGrid, "Solvable");
             } else {
@@ -281,7 +300,7 @@ public class GUI implements ActionListener {
             if (allHintsDisplayed) return; // Prevents user from adding hint count when all hints displayed
             allHintsDisplayed = false;
             Solver solve = new Solver(gridToSolve); // Initialize Solver
-            if (solve.dfs()) { // Check if solvable
+            if (solve.bfs()) { // Check if solvable
                 if (steps == null) steps = solve.getSteps(); // Retrieve queue of steps
                 if (!steps.isEmpty()) {
                     Solver.Move m = steps.pop(); // Dequeues from the steps queue

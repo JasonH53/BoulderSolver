@@ -5,6 +5,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.IOException;
 import java.util.*;
+import java.util.AbstractMap.SimpleEntry;
 
 public class Solver {
 
@@ -22,11 +23,11 @@ public class Solver {
 
     public void showSolution() {
         if (solvedRoute != null) {
-            int stepsNum = 0;
             Stack<Move> moveList = solvedRoute.moves;
+            int stepsNum = moveList.size() - 1;
             while (!moveList.isEmpty()) {
                 Move m = moveList.pop();
-                stepsNum++;
+                stepsNum--;
                 GUI.grid[m.p.y][m.p.x - 1].setTextOnButton(String.valueOf(stepsNum));
                 try {
                     switch (m.direction) {
@@ -49,62 +50,50 @@ public class Solver {
         return solvedRoute.moves;
     }
 
+    public boolean bfs() {
+        Queue<State> q = new LinkedList<>();
+        Set<String> visitedStates = new HashSet<>();
 
-    public boolean dfs() { // Depth First Search
-        int[][] newGrid = copyGrid(baseGrid);
-        time1 = System.currentTimeMillis();
-        int solutions = 0;
-        while (solutions < 5) { // Break out of the loop when 5 solutions are found
-            if (System.currentTimeMillis() - time1 > 50) break; // Makes sure the solver exists after 50ms of solving
-            Route newRoute = new Route();
-            if (search(newGrid, 7, 0, newRoute)) { // If the solution is found
-                storedRoutes.add(newRoute); // Add the route to the TreeSet
-                solutions++; // Add 1 to the solution count
-            }
-        }
-        solvedRoute = storedRoutes.pollFirst(); // Retrieve the only route in the TreeSet
-        return solvedRoute != null; // Return if there are moves in the solvedRoute. If no, it means no solution
-    }
+        q.add(new State(baseGrid, 7, 0, new Route()));
 
-    public boolean search(int[][] grid, int x, int y, Route r) {
-        if (x < 0 || y < 0 || x >= 8 || y > 8) return false; // Makes sure it does not go outside the bounds of the map
-        if (visited.contains(r.grid)) return false; // Makes sure the same path is not visited twice
-        visited.add(r.grid);
-        if (x == 1) { // Base Case
-            return true;
-        }
-        if (grid[x][y] == 0) { // Error checking
-            grid[x][y] = 2; // Mark the grid the DFS algorithm has visited as 2
-            if ((canPush(x, y, grid, "D") || canGoThere(x, y, grid, "D")) && search(r.grid = push(x, y, grid, "D"), x + 1, y, r)) {
-                Move m = new Move(); // ^ Check if it can search down or push boulder down and run the algorithm again recursively with an updated map and one position down
-                m.p.x = x;
-                m.p.y = y;
-                m.direction = "D"; // set coordinates and set direction
-                r.add(m);
-                return true;
-            } else if ((canPush(x, y, grid, "U") || canGoThere(x, y, grid, "U")) && search(r.grid = push(x, y, grid, "U"), x - 1, y, r)) {
-                Move m = new Move(); // ^ Check if it can search up or push boulder up and run the algorithm again recursively with an updated map and one position up
-                m.p.x = x;
-                m.p.y = y;
-                m.direction = "U"; // set coordinates and set direction
-                r.add(m);
-                return true;
-            } else if ((canPush(x, y, grid, "R") || canGoThere(x, y, grid, "R")) && search(r.grid = push(x, y, grid, "R"), x, y + 1, r)) {
-                Move m = new Move(); // ^ Check if it can search right or push boulder right and run the algorithm again recursively with an updated map and one position right
-                m.p.x = x;
-                m.p.y = y;
-                m.direction = "R"; // set coordinates and set direction
-                r.add(m);
-                return true;
-            } else if ((canPush(x, y, grid, "L") || canGoThere(x, y, grid, "L")) && search(r.grid = push(x, y, grid, "L"), x, y - 1, r)) {
-                Move m = new Move(); // ^ Check if it can search left or push boulder left and run the algorithm again recursively with an updated map and one position left
-                m.p.x = x;
-                m.p.y = y;
-                m.direction = "L"; // set coordinates and set direction
-                r.add(m);
+        while (!q.isEmpty()) {
+            State top = q.poll();
+            int[][] grid = top.grid;
+            int x = top.x, y = top.y;
+            Route r = top.route;
+
+            if (x == 1) {
+                solvedRoute = r;
                 return true;
             }
+
+            String stateKey = x + " " + y + Arrays.deepToString(grid);
+            if (visitedStates.contains(stateKey))
+                continue;
+            visitedStates.add(stateKey);
+
+            String[] dirs = {"D", "U", "R", "L"};
+            int[] dx = {1, -1, 0, 0};
+            int[] dy = {0, 0, 1, -1};
+
+            for (int i = 0; i < 4; ++i) {
+                String dir = dirs[i];
+                int tx = x + dx[i], ty = y + dy[i];
+
+                if (tx < 0 || ty < 0 || tx >= 8 || ty >= 7)
+                    continue;
+
+                if (canPush(x, y, grid, dir) || canGoThere(x, y, grid, dir)) {
+                    int[][] nextGrid = push(x, y, grid, dir);
+                    nextGrid[x][y] = 2;
+
+                    Route nextRoute = new Route(r);
+                    nextRoute.add(new Move(x, y, dir));
+                    q.add(new State(nextGrid, tx, ty, nextRoute));
+                }
+            }
         }
+
         return false;
     }
 
@@ -162,18 +151,22 @@ public class Solver {
                 if (g[x - 1][y] == 0 || g[x - 1][y] == 2) break; // If there is no boulder there, break
                 g[x - 2][y] = 1; // Set the grid behind it as boulder
                 g[x - 1][y] = 0; // Set the grid moving to as air
+                break;
             case "D": // down
                 if (x == 7) break;
                 if (g[x + 1][y] == 0 || g[x + 1][y] == 2) break;
                 g[x + 2][y] = 1;
+                break;
             case "L": // left
                 if (g[x][y - 1] == 0 || g[x][y - 1] == 2) break;
                 g[x][y - 2] = 1;
                 g[x][y - 1] = 0;
+                break;
             case "R": // right
                 if (g[x][y + 1] == 0 || g[x][y + 1] == 2) break;
                 g[x][y + 2] = 1;
                 g[x][y + 1] = 0;
+                break;
         }
         return g;
     }
@@ -189,24 +182,33 @@ public class Solver {
         return output;
     }
 
-    private static class Route implements Comparable<Route> {
-        private int movesNum;
+    private static class Route {
         private final Stack<Move> moves;
-        private int[][] grid;
 
         Route() {
-            this.movesNum = 0; // Set default moves to 0
-            this.moves = new Stack<>(); // Initialize move list
+            this.moves = new Stack<Move>();
+        }
+
+        Route(Route r) {
+            this.moves = new Stack<>();
+            moves.addAll(r.moves);
         }
 
         public void add(Move m) {
-            this.movesNum++;
             moves.push(m);
         }
+    }
 
-        @Override
-        public int compareTo(Route r) {
-            return this.movesNum - r.movesNum; // Compare moves of current route and the route is trying to add
+    class State {
+        int[][] grid;
+        int x, y;
+        Route route;
+
+        State(int[][] grid, int x, int y, Route route) {
+            this.grid = grid;
+            this.x = x;
+            this.y = y;
+            this.route = route;
         }
     }
 
@@ -214,8 +216,9 @@ public class Solver {
         String direction;
         Point p;
 
-        Move() {
-            p = new Point();
+        Move(int x, int y, String dir) {
+            this.p = new Point(x, y);
+            this.direction = dir;
         }
         /* Move Directions:
         U = Up
